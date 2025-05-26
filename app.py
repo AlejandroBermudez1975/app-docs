@@ -12,25 +12,32 @@ def extract_text_from_pdf(file):
     try:
         reader = PdfReader(file)
         for page in reader.pages:
-            text += page.extract_text() or ""
+            page_text = page.extract_text()
+            if page_text:
+                text += page_text
     except:
         pass
-    return text
+    return text if text.strip() else "[Sin texto detectable]"
 
-# Función para extraer texto de archivos Word
+# Función para extraer texto de archivos Word (incluye tablas)
 def extract_text_from_word(file):
     text = ""
     try:
         doc = docx.Document(file)
         for para in doc.paragraphs:
             text += para.text + "\n"
+        for table in doc.tables:
+            for row in table.rows:
+                for cell in row.cells:
+                    text += cell.text + "\n"
     except:
         pass
-    return text
+    return text if text.strip() else "[Sin texto detectable]"
 
-# Función para extraer emails
+# Función mejorada para extraer emails
 def extract_email(text):
-    match = re.search(r'[\w\.-]+@[\w\.-]+', text)
+    pattern = r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+'
+    match = re.search(pattern, text)
     return match.group(0) if match else ""
 
 # Interfaz de la app
@@ -65,9 +72,8 @@ if uploaded_files:
 
         progress_bar.progress((i + 1) / len(uploaded_files), text=f"📁 Procesando: {filename}")
 
-    # Crear Excel
     df = pd.DataFrame(data)
-    df = df[["email", "archivo"]]  # Solo dejar estas dos columnas
+    df = df[["email", "archivo"]]  # Solo columnas necesarias
 
     output = BytesIO()
     df.to_excel(output, index=False, engine="openpyxl")
